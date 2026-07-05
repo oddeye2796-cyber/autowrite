@@ -4,10 +4,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { createRequire } from "module";
 
-// Safe require function for both ESM (dev) and CJS (prod bundle)
-const requireFn = typeof require !== "undefined"
-  ? require
-  : createRequire(import.meta.url);
+const requireFn: NodeRequire = require;
 
 // Safe wrapper for pdf-parse to handle any ESM/CJS interop wrappers
 async function safePdfParse(buffer: Buffer): Promise<any> {
@@ -123,7 +120,7 @@ function createAdmZip(buffer: Buffer): any {
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 const PORT = 3000;
 
 // Compression middleware for faster response delivery
