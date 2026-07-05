@@ -1,0 +1,6 @@
+{
+  "name": "RFP 기반 사업계획서 자동 생성기",
+  "description": "공고문(RFP) 및 제안요청서와 사업계획서 양식을 기반으로 맞춤형 대용량 사업계획서를 자동 설계하고 구체적인 세부 본문을 생성하는 전문 문서 작성 플랫폼입니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
