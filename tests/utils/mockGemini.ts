@@ -1,10 +1,14 @@
-import { GoogleGenAI } from '@google/genai';
-
 // Simple mock implementation of GoogleGenAI
 export class MockGoogleGenAI {
   models = {
     generateContent: async ({ model, contents, config }: any) => {
-      // Return a deterministic response based on model name
+      // If responseMimeType is JSON, return parseable JSON
+      if (config?.responseMimeType === 'application/json') {
+        // For check-consistency endpoint, return audit results array
+        const responseText = JSON.stringify([]);
+        return { text: responseText };
+      }
+      // Default: return a simple text mock
       const responseText = JSON.stringify({ mockModel: model, received: contents });
       return { text: responseText };
     },

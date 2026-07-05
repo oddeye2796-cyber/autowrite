@@ -2,9 +2,14 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-import { createRequire } from "module";
 
-const requireFn: NodeRequire = require;
+// Use require for dynamic module loading (pdf-parse, mammoth, adm-zip, vite).
+// Works in CJS (Jest, esbuild --format=cjs) where require is native,
+// and in tsx ESM runtime which also provides require.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const requireFn = typeof require !== "undefined"
+  ? require
+  : (() => { const { createRequire } = require("module"); return createRequire(__filename); })();
 
 // Safe wrapper for pdf-parse to handle any ESM/CJS interop wrappers
 async function safePdfParse(buffer: Buffer): Promise<any> {
@@ -702,9 +707,6 @@ async function startServer() {
     });
   }
 
-  // Export app for testing
-  export { app };
-
   if (process.env.NODE_ENV !== "test") {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://0.0.0.0:${PORT}`);
@@ -712,4 +714,8 @@ async function startServer() {
   }
 }
 
-startServer();
+// app is already exported at declaration (line 123: export const app = express())
+// Only start the server when not running tests
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}

@@ -1,9 +1,28 @@
 import request from 'supertest';
 import { app } from '../server';
 
+// Mock @google/genai with Type enum included
 jest.mock('@google/genai', () => {
   const { MockGoogleGenAI } = require('../tests/utils/mockGemini');
-  return { GoogleGenAI: MockGoogleGenAI };
+  return {
+    GoogleGenAI: MockGoogleGenAI,
+    Type: {
+      ARRAY: 'ARRAY',
+      OBJECT: 'OBJECT',
+      STRING: 'STRING',
+      NUMBER: 'NUMBER',
+      BOOLEAN: 'BOOLEAN',
+    },
+  };
+});
+
+// Mock pdf-parse so it doesn't need real pdfjs-dist worker
+jest.mock('pdf-parse', () => {
+  return jest.fn(async (buffer: Buffer) => ({
+    text: 'mock parsed pdf text',
+    numpages: 1,
+    info: {},
+  }));
 });
 
 describe('API routes', () => {
