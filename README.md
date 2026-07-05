@@ -1,20 +1,28 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# AutoWrite
 
-# Run and deploy your AI Studio app
+## Overview
+A modern Vite + Express project that generates UI components from Figma designs.
 
-This contains everything you need to run your app locally.
+## Local Development
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+2. Fill in your personal tokens (`GEMINI_API_KEY`, `FIGMA_TOKEN`, `VERCEL_TOKEN`).
+3. Install dependencies and start the dev server:
+   ```bash
+   npm ci
+   npm run dev
+   ```
 
-View your app in AI Studio: https://ai.studio/apps/2b6c20b0-0899-4dcd-83f7-7ad4f10d982f
+## CI/CD (GitHub Actions)
+- Runs on every push to `master`.
+- Steps: lint, test, build, and deploy to Vercel.
+- Ensure `VERCEL_TOKEN` is stored as a **GitHub secret**.
 
-## Run Locally
+## Adding Secrets
+- In Vercel: add `GEMINI_API_KEY` and `FIGMA_TOKEN` as environment variables.
+- In GitHub: add `VERCEL_TOKEN` under Settings → Secrets → Actions.
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## License
+MIT
