@@ -2,18 +2,13 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-
-// Use require for dynamic module loading (pdf-parse, mammoth, adm-zip, vite).
-// Works in CJS (Jest, esbuild --format=cjs) where require is native,
-// and in tsx ESM runtime which also provides require.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const requireFn = typeof require !== "undefined"
-  ? require
-  : (() => { const { createRequire } = require("module"); return createRequire(__filename); })();
+import * as pdfParseModule from "pdf-parse";
+import mammothModule from "mammoth";
+import AdmZipModule from "adm-zip";
 
 // Safe wrapper for pdf-parse to handle any ESM/CJS interop wrappers
 async function safePdfParse(buffer: Buffer): Promise<any> {
-  const rawPdfParse = requireFn("pdf-parse");
+  const rawPdfParse: any = pdfParseModule;
   
   // 1. Try using the new PDFParse class if available
   const PDFParseClass = rawPdfParse.PDFParse || rawPdfParse.default?.PDFParse;
@@ -77,7 +72,7 @@ function decodeTextBuffer(buffer: Buffer): string {
 
 // Safe wrapper for mammoth extractRawText
 async function safeMammothExtract(options: { buffer: Buffer }): Promise<any> {
-  const rawMammoth = requireFn("mammoth");
+  const rawMammoth: any = mammothModule;
   let inst: any = null;
   if (rawMammoth && typeof rawMammoth.extractRawText === "function") {
     inst = rawMammoth;
@@ -101,7 +96,7 @@ async function safeMammothExtract(options: { buffer: Buffer }): Promise<any> {
 
 // Safe wrapper for AdmZip constructor
 function createAdmZip(buffer: Buffer): any {
-  const rawAdmZip = requireFn("adm-zip");
+  const rawAdmZip: any = AdmZipModule;
   let Cls: any = null;
   if (typeof rawAdmZip === "function") {
     Cls = rawAdmZip;
@@ -693,7 +688,8 @@ ${combinedDoc}
 // Vite를 미들웨어로 마운트
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = requireFn("vite");
+    // Vite is dev-only; use dynamic import() so it's not bundled into production
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
