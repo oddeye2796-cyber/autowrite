@@ -711,7 +711,7 @@ async function startServer() {
 }
 
 // app is already exported at declaration (line 123: export const app = express())
-// Only start the server when not running tests
-if (process.env.NODE_ENV !== "test") {
+// Only start the server when running locally (not in tests or Vercel serverless)
+if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
   startServer();
 }
