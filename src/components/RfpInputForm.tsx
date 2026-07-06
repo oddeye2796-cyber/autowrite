@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Upload, FileText, ArrowRight, Settings, Sparkles, Building2, Calendar, Clipboard, RefreshCw, BookOpen, Layers } from "lucide-react";
+import { parseFileClient } from "../utils/clientParser";
 
 interface RfpInputFormProps {
   onAnalyze: (config: {
@@ -76,44 +77,53 @@ export default function RfpInputForm({ onAnalyze, isLoading, onImportBackup }: R
       let combinedText = "";
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const base64 = await convertToBase64(file);
+        let extractedText = "";
 
-        const response = await fetch("/api/parse-file", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            base64,
-            filename: file.name,
-            filetype: file.type,
-          }),
-        });
+        try {
+          console.log(`[Parser] Attempting client-side parse for: ${file.name}`);
+          extractedText = await parseFileClient(file);
+        } catch (clientErr) {
+          console.warn(`[Parser] Client-side parse failed for ${file.name}, falling back to server:`, clientErr);
+          
+          const base64 = await convertToBase64(file);
+          const response = await fetch("/api/parse-file", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              base64,
+              filename: file.name,
+              filetype: file.type,
+            }),
+          });
 
-        if (!response.ok) {
-          let errorMsg = `${file.name} 해독에 실패했습니다.`;
-          try {
-            // First try to parse as JSON
-            const textResponse = await response.text();
+          if (!response.ok) {
+            let errorMsg = `${file.name} 해독에 실패했습니다.`;
             try {
-              const errData = JSON.parse(textResponse);
-              if (errData.error) errorMsg = errData.error;
-            } catch (jsonErr) {
-              // If it's not JSON, it might be a Vercel plain text/HTML error
-              if (response.status === 413) {
-                errorMsg = "파일 용량이 너무 큽니다. (Vercel 제한 4.5MB 이하 권장)";
-              } else if (textResponse.includes("A server error") || response.status >= 500) {
-                errorMsg = "서버 타임아웃 또는 처리 오류가 발생했습니다. 파일 크기나 형식을 확인해주세요. (Vercel 제한 4.5MB 이하 및 10초 이내 처리 권장)";
-              } else {
-                errorMsg = `서버 오류 (${response.status}): ${textResponse.slice(0, 50)}...`;
+              // First try to parse as JSON
+              const textResponse = await response.text();
+              try {
+                const errData = JSON.parse(textResponse);
+                if (errData.error) errorMsg = errData.error;
+              } catch (jsonErr) {
+                // If it's not JSON, it might be a Vercel plain text/HTML error
+                if (response.status === 413) {
+                  errorMsg = "파일 용량이 너무 큽니다. (Vercel 제한 4.5MB 이하 권장)";
+                } else if (textResponse.includes("A server error") || response.status >= 500) {
+                  errorMsg = "서버 타임아웃 또는 처리 오류가 발생했습니다. 파일 크기나 형식을 확인해주세요. (Vercel 제한 4.5MB 이하 및 10초 이내 처리 권장)";
+                } else {
+                  errorMsg = `서버 오류 (${response.status}): ${textResponse.slice(0, 50)}...`;
+                }
               }
+            } catch (e) {
+              // Fallback if even text() fails
             }
-          } catch (e) {
-            // Fallback if even text() fails
+            throw new Error(errorMsg);
           }
-          throw new Error(errorMsg);
+
+          const data = await response.json();
+          extractedText = data.text || "";
         }
 
-        const data = await response.json();
-        const extractedText = data.text || "";
         combinedText += `\n\n--- [등록 파일: ${file.name}] ---\n${extractedText}`;
       }
 
