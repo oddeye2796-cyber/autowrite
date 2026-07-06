@@ -1,3 +1,4 @@
+import "./polyfill";
 import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -715,3 +716,6 @@ async function startServer() {
 if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
   startServer();
 }
+
+// Default export for Vercel serverless function
+export default app;

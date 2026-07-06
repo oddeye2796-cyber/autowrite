@@ -89,8 +89,27 @@ export default function RfpInputForm({ onAnalyze, isLoading, onImportBackup }: R
         });
 
         if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || `${file.name} 해독에 실패했습니다.`);
+          let errorMsg = `${file.name} 해독에 실패했습니다.`;
+          try {
+            // First try to parse as JSON
+            const textResponse = await response.text();
+            try {
+              const errData = JSON.parse(textResponse);
+              if (errData.error) errorMsg = errData.error;
+            } catch (jsonErr) {
+              // If it's not JSON, it might be a Vercel plain text/HTML error
+              if (response.status === 413) {
+                errorMsg = "파일 용량이 너무 큽니다. (Vercel 제한 4.5MB 이하 권장)";
+              } else if (textResponse.includes("A server error") || response.status >= 500) {
+                errorMsg = "서버 타임아웃 또는 처리 오류가 발생했습니다. 파일 크기나 형식을 확인해주세요. (Vercel 제한 4.5MB 이하 및 10초 이내 처리 권장)";
+              } else {
+                errorMsg = `서버 오류 (${response.status}): ${textResponse.slice(0, 50)}...`;
+              }
+            }
+          } catch (e) {
+            // Fallback if even text() fails
+          }
+          throw new Error(errorMsg);
         }
 
         const data = await response.json();
