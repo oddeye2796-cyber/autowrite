@@ -32,3 +32,14 @@ export interface GenerationProgress {
   statusText: string;
   isBulkGenerating: boolean;
 }
+
+export interface SkillInput {
+  figmaUrl?: string;
+  [key: string]: any;
+}
+
+export interface SkillResult {
+  success: boolean;
+  output?: string;
+  error?: string;
+}
