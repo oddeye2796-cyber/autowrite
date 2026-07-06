@@ -68,17 +68,17 @@ export function useProposalState(getFriendlyErrorMessage: (response: Response, d
     setRfpCustomPrompt(config.customPrompt);
 
     try {
-      let data: ProposalOutline;
       const apiKey = await fetchApiKey();
-      if (apiKey) {
-        try {
-          console.log("[useProposalState] Running client-side RFP analysis...");
-          data = await clientAnalyzeRfp(apiKey, config);
-        } catch (clientErr: any) {
-          console.warn("[useProposalState] Client-side RFP analysis failed, falling back to server:", clientErr);
-          data = await runServerAnalyze(config);
-        }
-      } else {
+      if (!apiKey) {
+        throw new Error("Gemini API Key가 설정되지 않았습니다. 우측 상단의 설정(톱니바퀴) 아이콘을 눌러 API Key를 등록하거나 Vercel 환경 변수를 설정해주세요.");
+      }
+
+      let data: ProposalOutline;
+      try {
+        console.log("[useProposalState] Running client-side RFP analysis...");
+        data = await clientAnalyzeRfp(apiKey, config);
+      } catch (clientErr: any) {
+        console.warn("[useProposalState] Client-side RFP analysis failed, falling back to server:", clientErr);
         data = await runServerAnalyze(config);
       }
       
@@ -167,17 +167,17 @@ export function useProposalState(getFriendlyErrorMessage: (response: Response, d
         customPrompt: rfpCustomPrompt,
       };
 
-      let result;
       const apiKey = await fetchApiKey();
-      if (apiKey) {
-        try {
-          console.log("[useProposalState] Running client-side section generation...");
-          result = await clientGenerateSection(apiKey, reqConfig);
-        } catch (clientErr: any) {
-          console.warn("[useProposalState] Client-side section generation failed, falling back to server:", clientErr);
-          result = await runServerGenerate(reqConfig);
-        }
-      } else {
+      if (!apiKey) {
+        throw new Error("Gemini API Key가 설정되지 않았습니다. 우측 상단의 설정(톱니바퀴) 아이콘을 눌러 API Key를 등록하거나 Vercel 환경 변수를 설정해주세요.");
+      }
+
+      let result;
+      try {
+        console.log("[useProposalState] Running client-side section generation...");
+        result = await clientGenerateSection(apiKey, reqConfig);
+      } catch (clientErr: any) {
+        console.warn("[useProposalState] Client-side section generation failed, falling back to server:", clientErr);
         result = await runServerGenerate(reqConfig);
       }
       

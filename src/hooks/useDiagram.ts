@@ -44,21 +44,21 @@ export function useDiagram(
     setGeneratedDiagramUrl(null);
 
     try {
-      let data;
       const apiKey = await fetchApiKey();
-      if (apiKey) {
-        try {
-          console.log("[useDiagram] Running client-side diagram generation...");
-          data = await clientGenerateDiagram(apiKey, {
-            prompt: diagramPrompt,
-            style: diagramStyle,
-            aspectRatio: diagramAspectRatio
-          });
-        } catch (clientErr: any) {
-          console.warn("[useDiagram] Client-side diagram generation failed, falling back to server:", clientErr);
-          data = await runServerDiagram();
-        }
-      } else {
+      if (!apiKey) {
+        throw new Error("Gemini API Key가 설정되지 않았습니다. 우측 상단의 설정(톱니바퀴) 아이콘을 눌러 API Key를 등록하거나 Vercel 환경 변수를 설정해주세요.");
+      }
+
+      let data;
+      try {
+        console.log("[useDiagram] Running client-side diagram generation...");
+        data = await clientGenerateDiagram(apiKey, {
+          prompt: diagramPrompt,
+          style: diagramStyle,
+          aspectRatio: diagramAspectRatio
+        });
+      } catch (clientErr: any) {
+        console.warn("[useDiagram] Client-side diagram generation failed, falling back to server:", clientErr);
         data = await runServerDiagram();
       }
 

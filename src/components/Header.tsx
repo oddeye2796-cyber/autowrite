@@ -1,14 +1,15 @@
 import React from "react";
-import { FileText, Cpu, AlertCircle, RefreshCw } from "lucide-react";
+import { FileText, Cpu, AlertCircle, RefreshCw, Settings } from "lucide-react";
 
 interface HeaderProps {
   title?: string;
   hasOutline: boolean;
   onReset: () => void;
   isBulkGenerating: boolean;
+  onOpenSettings: () => void;
 }
 
-export default function Header({ title, hasOutline, onReset, isBulkGenerating }: HeaderProps) {
+export default function Header({ title, hasOutline, onReset, isBulkGenerating, onOpenSettings }: HeaderProps) {
   return (
     <header className="border-b border-slate-200 bg-white shadow-sm transition-all duration-300 sticky top-0 z-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -50,6 +51,14 @@ export default function Header({ title, hasOutline, onReset, isBulkGenerating }:
                 <span>새로 분석하기</span>
               </button>
             )}
+
+            <button
+              onClick={onOpenSettings}
+              className="flex items-center justify-center p-2 rounded-md border border-slate-300 bg-white text-slate-600 hover:text-slate-900 shadow-sm transition hover:bg-slate-50 cursor-pointer"
+              title="설정 및 Secrets"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </div>

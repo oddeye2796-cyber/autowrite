@@ -1,6 +1,12 @@
 let cachedApiKey: string | null = null;
 
 export async function fetchApiKey(): Promise<string> {
+  if (typeof window !== "undefined") {
+    const localKey = localStorage.getItem("GEMINI_API_KEY");
+    if (localKey && localKey.trim()) {
+      return localKey.trim();
+    }
+  }
   if (cachedApiKey !== null) return cachedApiKey;
   try {
     const res = await fetch("/api/get-gemini-key");

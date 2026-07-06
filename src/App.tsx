@@ -48,6 +48,16 @@ export default function App() {
   const [customPrompt, setCustomPrompt] = useState("");
   const [isCustomPromoting, setIsCustomPromoting] = useState(false);
 
+  // Settings modal state
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem("GEMINI_API_KEY") || "");
+
+  const handleSaveApiKey = () => {
+    localStorage.setItem("GEMINI_API_KEY", apiKeyInput.trim());
+    setShowSettingsModal(false);
+    alert("Gemini API Key가 안전하게 저장되었습니다.");
+  };
+
   const {
     isBulkGenerating,
     setIsBulkGenerating,
@@ -363,6 +373,7 @@ export default function App() {
           setSelectedSectionId("overview");
         }}
         isBulkGenerating={isBulkGenerating}
+        onOpenSettings={() => setShowSettingsModal(true)}
       />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -880,6 +891,62 @@ export default function App() {
         projectDuration={projectDuration}
         onCheck={consistency.handleCheckConsistency}
       />
+
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-xl overflow-hidden animate-scale-up">
+            <div className="bg-slate-50 border-b border-slate-100 p-5">
+              <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <span>프로젝트 설정 & Secrets 관리</span>
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                  Gemini API Key
+                </label>
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="AIzaSy... 형식의 API Key를 입력하세요"
+                  className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                ※ 안내: 입력한 API Key는 본인의 웹 브라우저 로컬 저장소(localStorage)에만 안전하게 보관되며, 외부 서버로 절대 전송되지 않습니다. Vercel 서버의 10초 타임아웃 실행 제한 우회를 위해 브라우저에서 직접 Gemini API를 호출할 때 사용됩니다.
+              </p>
+            </div>
+            <div className="bg-slate-50 border-t border-slate-100 p-4 flex justify-between gap-2">
+              <button
+                onClick={() => {
+                  setApiKeyInput("");
+                  localStorage.removeItem("GEMINI_API_KEY");
+                  alert("저장된 API Key가 삭제되었습니다.");
+                }}
+                className="px-3.5 py-2 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-xs font-bold text-rose-700 transition cursor-pointer"
+              >
+                삭제
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  className="px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition cursor-pointer"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={handleSaveApiKey}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-sm transition cursor-pointer"
+                >
+                  저장 및 적용
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
