@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { ProposalOutline } from "../types";
+import { fetchApiKey, clientGenerateDiagram } from "../utils/geminiClient";
 
 export function useDiagram(
   outline: ProposalOutline | null,
@@ -17,6 +18,25 @@ export function useDiagram(
   const [generatedDiagramUrl, setGeneratedDiagramUrl] = useState<string | null>(null);
   const [diagramError, setDiagramError] = useState<string | null>(null);
 
+  async function runServerDiagram(): Promise<any> {
+    const response = await fetch("/api/generate-diagram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: diagramPrompt,
+        style: diagramStyle,
+        aspectRatio: diagramAspectRatio,
+      }),
+    });
+
+    if (!response.ok) {
+      const friendlyError = await getFriendlyErrorMessage(response, "서버 연동 도중 오류가 발생했습니다.");
+      throw new Error(friendlyError);
+    }
+
+    return await response.json();
+  }
+
   const handleGenerateDiagram = async () => {
     if (!diagramPrompt.trim()) return;
     setIsGeneratingDiagram(true);
@@ -24,27 +44,31 @@ export function useDiagram(
     setGeneratedDiagramUrl(null);
 
     try {
-      const response = await fetch("/api/generate-diagram", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: diagramPrompt,
-          style: diagramStyle,
-          aspectRatio: diagramAspectRatio,
-        }),
-      });
-
-      if (!response.ok) {
-        const friendlyError = await getFriendlyErrorMessage(response, "서버 연동 도중 오류가 발생했습니다.");
-        throw new Error(friendlyError);
+      let data;
+      const apiKey = await fetchApiKey();
+      if (apiKey) {
+        try {
+          console.log("[useDiagram] Running client-side diagram generation...");
+          data = await clientGenerateDiagram(apiKey, {
+            prompt: diagramPrompt,
+            style: diagramStyle,
+            aspectRatio: diagramAspectRatio
+          });
+        } catch (clientErr: any) {
+          console.warn("[useDiagram] Client-side diagram generation failed, falling back to server:", clientErr);
+          data = await runServerDiagram();
+        }
+      } else {
+        data = await runServerDiagram();
       }
 
-      const data = await response.json();
-      if (data.success) {
-        setGeneratedDiagramUrl(data.imageUrl);
-      } else {
-        setGeneratedDiagramUrl(data.imageUrl);
-        setDiagramError("이미지 생성이 대기 중이거나 한도 초과 상태입니다. 실무 참고용 임시 시뮬레이션 다이어그램을 출력합니다.");
+      if (data) {
+        if (data.success) {
+          setGeneratedDiagramUrl(data.imageUrl);
+        } else {
+          setGeneratedDiagramUrl(data.imageUrl);
+          setDiagramError("이미지 생성이 대기 중이거나 한도 초과 상태입니다. 실무 참고용 임시 시뮬레이션 다이어그램을 출력합니다.");
+        }
       }
     } catch (err: any) {
       setDiagramError(err.message || "이미지 생성 도중 알 수 없는 오류가 발생했습니다.");

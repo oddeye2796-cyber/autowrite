@@ -270,6 +270,11 @@ async function parseFileWithGemini(buffer: Buffer, mimeType: string): Promise<st
   }
 }
 
+// Gemini API Key 조회 API (클라이언트 사이드 직접 호출용)
+app.get("/api/get-gemini-key", (req, res) => {
+  res.json({ apiKey: process.env.GEMINI_API_KEY || "" });
+});
+
 // 0. 문서 파일 통합 파싱 API (PDF, DOCX, HWPX, HWP, TXT 등)
 app.post("/api/parse-file", async (req, res) => {
   try {

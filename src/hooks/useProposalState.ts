@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ProposalOutline } from "../types";
+import { fetchApiKey, clientAnalyzeRfp, clientGenerateSection } from "../utils/geminiClient";
 
 export function useProposalState(getFriendlyErrorMessage: (response: Response, defaultMessage: string) => Promise<string>) {
   const [announcementText, setAnnouncementText] = useState("");
@@ -19,6 +20,31 @@ export function useProposalState(getFriendlyErrorMessage: (response: Response, d
   useEffect(() => {
     outlineRef.current = outline;
   }, [outline]);
+
+  async function runServerAnalyze(config: any): Promise<ProposalOutline> {
+    const response = await fetch("/api/analyze-rfp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        announcementText: config.announcementText,
+        rfpText: config.rfpText,
+        templateText: config.templateText,
+        referenceText: config.referenceText,
+        companyName: config.companyName,
+        projectDuration: config.projectDuration,
+        writingStyle: config.writingStyle,
+        customPrompt: config.customPrompt,
+        targetPages: config.targetPages,
+      }),
+    });
+
+    if (!response.ok) {
+      const friendlyError = await getFriendlyErrorMessage(response, "RFP 분석 도중 서버에서 오류가 발생했습니다.");
+      throw new Error(friendlyError);
+    }
+
+    return await response.json();
+  }
 
   const handleAnalyzeRfp = async (config: {
     announcementText: string;
@@ -42,28 +68,19 @@ export function useProposalState(getFriendlyErrorMessage: (response: Response, d
     setRfpCustomPrompt(config.customPrompt);
 
     try {
-      const response = await fetch("/api/analyze-rfp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          announcementText: config.announcementText,
-          rfpText: config.rfpText,
-          templateText: config.templateText,
-          referenceText: config.referenceText,
-          companyName: config.companyName,
-          projectDuration: config.projectDuration,
-          writingStyle: config.writingStyle,
-          customPrompt: config.customPrompt,
-          targetPages: config.targetPages,
-        }),
-      });
-
-      if (!response.ok) {
-        const friendlyError = await getFriendlyErrorMessage(response, "RFP 분석 도중 서버에서 오류가 발생했습니다.");
-        throw new Error(friendlyError);
+      let data: ProposalOutline;
+      const apiKey = await fetchApiKey();
+      if (apiKey) {
+        try {
+          console.log("[useProposalState] Running client-side RFP analysis...");
+          data = await clientAnalyzeRfp(apiKey, config);
+        } catch (clientErr: any) {
+          console.warn("[useProposalState] Client-side RFP analysis failed, falling back to server:", clientErr);
+          data = await runServerAnalyze(config);
+        }
+      } else {
+        data = await runServerAnalyze(config);
       }
-
-      const data: ProposalOutline = await response.json();
       
       const sectionsWithState = data.sections.map((sec) => ({
         ...sec,
@@ -82,6 +99,21 @@ export function useProposalState(getFriendlyErrorMessage: (response: Response, d
       setIsLoadingOutline(false);
     }
   };
+
+  async function runServerGenerate(reqConfig: any): Promise<any> {
+    const response = await fetch("/api/generate-section", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reqConfig),
+    });
+
+    if (!response.ok) {
+      const friendlyError = await getFriendlyErrorMessage(response, "본문 생성에 실패하였습니다.");
+      throw new Error(friendlyError);
+    }
+
+    return await response.json();
+  }
 
   const handleGenerateSection = async (
     sectionId: string, 
@@ -116,36 +148,38 @@ export function useProposalState(getFriendlyErrorMessage: (response: Response, d
         .join("\n\n");
 
       const sectionToGenerate = currentOutline.sections[targetIndex];
+      const reqConfig = {
+        sectionId,
+        parentTitle: sectionToGenerate.parentTitle,
+        subTitle: sectionToGenerate.subTitle,
+        keyFocus: rewriteInstructions 
+          ? `${sectionToGenerate.keyFocus} (추가 지시사항: ${rewriteInstructions})`
+          : sectionToGenerate.keyFocus,
+        estimatedPages: sectionToGenerate.estimatedPages,
+        announcementText,
+        rfpText,
+        templateText,
+        referenceText,
+        companyName,
+        projectDuration,
+        generatedContext: prevContext,
+        writingStyle,
+        customPrompt: rfpCustomPrompt,
+      };
 
-      const response = await fetch("/api/generate-section", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sectionId,
-          parentTitle: sectionToGenerate.parentTitle,
-          subTitle: sectionToGenerate.subTitle,
-          keyFocus: rewriteInstructions 
-            ? `${sectionToGenerate.keyFocus} (추가 지시사항: ${rewriteInstructions})`
-            : sectionToGenerate.keyFocus,
-          estimatedPages: sectionToGenerate.estimatedPages,
-          announcementText,
-          rfpText,
-          templateText,
-          referenceText,
-          companyName,
-          projectDuration,
-          generatedContext: prevContext,
-          writingStyle,
-          customPrompt: rfpCustomPrompt,
-        }),
-      });
-
-      if (!response.ok) {
-        const friendlyError = await getFriendlyErrorMessage(response, "본문 생성에 실패하였습니다.");
-        throw new Error(friendlyError);
+      let result;
+      const apiKey = await fetchApiKey();
+      if (apiKey) {
+        try {
+          console.log("[useProposalState] Running client-side section generation...");
+          result = await clientGenerateSection(apiKey, reqConfig);
+        } catch (clientErr: any) {
+          console.warn("[useProposalState] Client-side section generation failed, falling back to server:", clientErr);
+          result = await runServerGenerate(reqConfig);
+        }
+      } else {
+        result = await runServerGenerate(reqConfig);
       }
-
-      const result = await response.json();
       
       setOutline((prevOutline) => {
         if (!prevOutline) return null;
