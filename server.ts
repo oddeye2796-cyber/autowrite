@@ -243,6 +243,33 @@ async function generateWithModelFallback(models: string[], prompt: string, confi
   throw lastError;
 }
 
+// Safe fallback to parse documents using Gemini's native multimodal capabilities
+async function parseFileWithGemini(buffer: Buffer, mimeType: string): Promise<string> {
+  try {
+    const ai = getGeminiClient();
+    const base64Data = buffer.toString("base64");
+    
+    console.log(`[Gemini Parser] Parsing file of type ${mimeType} (${buffer.length} bytes) via Gemini...`);
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: mimeType
+          }
+        },
+        "Extract all readable text from this document. Output the extracted text directly. Do not summarize, do not add any explanations, introductory or concluding remarks. Just output the clean extracted text."
+      ]
+    });
+    
+    return response.text || "";
+  } catch (err: any) {
+    console.error("[Gemini Parser] Failed to parse file with Gemini:", err);
+    throw new Error("문서 파일 분석에 실패했습니다: " + err.message);
+  }
+}
+
 // 0. 문서 파일 통합 파싱 API (PDF, DOCX, HWPX, HWP, TXT 등)
 app.post("/api/parse-file", async (req, res) => {
   try {
@@ -257,11 +284,21 @@ app.post("/api/parse-file", async (req, res) => {
     const lowerFilename = filename.toLowerCase();
 
     if (lowerFilename.endsWith(".pdf") || filetype === "application/pdf") {
-      const data = await safePdfParse(buffer);
-      text = data.text || "";
+      try {
+        const data = await safePdfParse(buffer);
+        text = data.text || "";
+      } catch (pdfErr: any) {
+        console.warn("Local pdf-parse failed, falling back to Gemini API:", pdfErr);
+        text = await parseFileWithGemini(buffer, "application/pdf");
+      }
     } else if (lowerFilename.endsWith(".docx") || filetype?.includes("wordprocessingml")) {
-      const result = await safeMammothExtract({ buffer });
-      text = result.value || "";
+      try {
+        const result = await safeMammothExtract({ buffer });
+        text = result.value || "";
+      } catch (docxErr: any) {
+        console.warn("Local mammoth parse failed, falling back to Gemini API:", docxErr);
+        text = await parseFileWithGemini(buffer, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      }
     } else if (lowerFilename.endsWith(".hwpx")) {
       try {
         const zip = createAdmZip(buffer);
